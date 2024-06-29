@@ -18,46 +18,44 @@ base_url = 'https://coomer.su/'
 class_names = ['coconut bra', 'hula skirt', 'flower lei', 'flower bra']
 
 
+already_posts = []
+
+total_elements = 0
+processed_elements = 0
+
 
 def safe_request(url, max_retries=5):
-    """ Отправляет запрос с экспоненциальной задержкой в случае ошибки 429. """
+    """Отправляет запрос с экспоненциальной задержкой в случае ошибки 429."""
     retry_delay = 1  # Начальная задержка в секундах
+
     for attempt in range(max_retries):
-        response = requests.get(url)
+        response = requests.get(url, timeout=40 )
         if response.status_code == 429:  # Слишком много запросов
-            # print(f"Request rate limit exceeded, retrying in {retry_delay} seconds...")
             time.sleep(retry_delay)
             retry_delay *= 2  # Увеличиваем задержку вдвое
         else:
             return response
     return None  # Возвращает None, если все попытки неудачны
 
-def not_check_already(target_line):
-    """ Проверка, была ли ссылка уже обработана ранее. """
-    with open('already3.txt', 'r', encoding='utf-8') as file:
-        for line in file:
-            if line.strip() == target_line.strip():
-                return False
-    return True
-
-# totalCountUrl = 0
-
 
 def detect_objects(image_url, item, post_url):
     try:
         response = safe_request(image_url.lstrip('/'))
         if response and response.status_code == 200:
+            # print(f"Img: {post_url}")
             with Image.open(BytesIO(response.content)).convert("RGB") as image:
+
                 results = model.predict(image)
                 results.render()  # Рисуем рамки на изображении
 
                 img_array = np.array(image)  # Преобразуем PIL Image в numpy array
                 img_to_save = cv2.cvtColor(img_array, cv2.COLOR_RGB2BGR)  # Конвертируем из RGB в BGR для сохранения с OpenCV
-                img_path = f"temp_result_{item['id']}.jpg"  # Путь для сохранения изображения
+                img_path = f"temp_files/temp_result_{item['id']}.jpg"  # Путь для сохранения изображения
 
                 cv2.imwrite(img_path, img_to_save)  # Сохраняем изображение
+
                 for *box, conf, cls in results.xyxy[0]:
-                    if conf > 0.1:
+                    if conf > 0.5:
                         class_name = class_names[int(cls)]
                         result_text = (
                             f"User: {item['user']}\n"
@@ -67,19 +65,16 @@ def detect_objects(image_url, item, post_url):
                             f"{class_name} - {conf:.5f}"
                         )
                         send_telegram_photo(img_path, result_text)  # Отправляем изображение и текст в Telegram
+                        # print(f"Image sent to Telegram with caption: {result_text}")
                         os.remove(img_path)  # Удаляем файл после отправки
+                        # print(f"Image {img_path} removed after sending to Telegram")
                         return True
     except requests.RequestException as e:
+        with open('to_long.txt', 'a', encoding='utf-8') as file:
+            file.write(f"{post_url}\n")
         print(f"Failed to load image {image_url}: {str(e)}")
     return False
 
-def send_telegram_photo(img_path, caption):
-    bot_token = '6810766307:AAE-9MIiuW65ouuzDKpazsWk1VQkWFA4Xxk'
-    chat_id = '-4236684694'
-    bot = Bot(token=bot_token)
-    with open(img_path, 'rb') as photo:
-        bot.send_photo(chat_id=chat_id, photo=photo, caption=caption)
-    os.remove(img_path)  # Удаляем файл после отправки, чтобы освободить место
 
 def is_image(url):
     return url.split('.')[-1] in ['jpg', 'png', 'jpeg']
@@ -96,18 +91,43 @@ def extract_media_urls(item):
             media_urls.append(f"https://coomer.su/{attachment['path'].lstrip('/')}")
     return media_urls
 
+def not_check_already(target_line):
+    """ Проверка, была ли ссылка уже обработана ранее. """
+    with open('already.txt', 'r', encoding='utf-8') as file:
+        for line in file:
+            if line.strip() == target_line.strip():
+                return False
+    return True
+
+def not_minus_words(title):
+    """Проверяет, содержит ли заголовок минус-слова."""
+    title_lower = title.lower()
+    minus_words = ["juicy", "@sweetcheeksjuliefree"]
+    for word in minus_words:
+        if word.lower() in title_lower:
+            return False
+    return True
+
+def print_progress():
+    if total_elements > 0:
+        progress = (processed_elements / total_elements) * 100
+        print(f"Progress: {processed_elements}/{total_elements} ({progress:.2f}%)")
+    else:
+        print("No total elements to process.")
+
 def detect_in_video(video_url, item, post_url):
     try:
         response = safe_request(video_url.lstrip('/'))
         if response and response.status_code == 200:
+            # print(f"Video: {post_url}")
             video_data = response.content
-            video_path = f"temp_video_{item['id']}.mp4"
+            video_path = f"temp_files/temp_video_{item['id']}.mp4"
             with open(video_path, 'wb') as video_file:
                 video_file.write(video_data)
 
             cap = cv2.VideoCapture(video_path)
             frame_count = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
-            for i in range(0, frame_count, frame_count // 10):
+            for i in range(0, frame_count, frame_count // 20):
                 cap.set(cv2.CAP_PROP_POS_FRAMES, i)
                 ret, frame = cap.read()
                 if not ret:
@@ -117,12 +137,12 @@ def detect_in_video(video_url, item, post_url):
                 results = model.predict(frame_rgb)
                 results.render()
 
-                img_path = f"temp_result_{item['id']}_frame_{i}.jpg"
+                img_path = f"temp_files/temp_result_{item['id']}_frame_{i}.jpg"
                 frame_bgr = cv2.cvtColor(frame_rgb, cv2.COLOR_RGB2BGR)  # Преобразуем обратно в BGR для сохранения
                 cv2.imwrite(img_path, frame_bgr)
 
                 for *box, conf, cls in results.xyxy[0]:
-                    if conf > 0.1:
+                    if conf > 0.5:
                         class_name = class_names[int(cls)]
                         result_text = (
                             f"User: {item['user']}\n"
@@ -132,30 +152,48 @@ def detect_in_video(video_url, item, post_url):
                             f"{class_name} - {conf:.5f}"
                         )
                         send_telegram_photo(img_path, result_text)  # Отправляем изображение и текст в Telegram
-                        os.remove(img_path)  # Удаляем файл после отправки
+                        # os.remove(img_path)  # Удаляем файл после отправки
                         cap.release()
-                        os.remove(video_path)  # Удаляем видео файл после обработки
+                        # os.remove(video_path)  # Удаляем видео файл после обработки
                         return True
             cap.release()
             os.remove(video_path)
     except requests.RequestException as e:
+        with open('to_long.txt', 'a', encoding='utf-8') as file:
+            file.write(f"{post_url}\n")
         print(f"Failed to load video {video_url}: {str(e)}")
     return False
 
 
+def send_telegram_photo(img_path, caption):
+    bot_token = '6810766307:AAE-9MIiuW65ouuzDKpazsWk1VQkWFA4Xxk'
+    chat_id = '-4236684694'
+    bot = Bot(token=bot_token)
+    with open(img_path, 'rb') as photo:
+        bot.send_photo(chat_id=chat_id, photo=photo, caption=caption)
+    os.remove(img_path)  # Удаляем файл после отправки, чтобы освободить место
+
+
 def process_item(item, base_url):
     post_url = f"{base_url}{item['service']}/user/{item['user']}/post/{item['id']}"
-    if not_check_already(post_url):
+    if not_check_already(post_url) and not_minus_words(item['title']):
         media_urls = extract_media_urls(item)
+
+
         for media_url in media_urls:
-            if is_image(media_url) and detect_objects(media_url, item, post_url):
+            if (is_image(media_url) and detect_objects(media_url, item, post_url)):
                 break
-        else:
-            for media_url in media_urls:
-                if is_video(media_url) and detect_in_video(media_url, item, post_url):
-                    break
-        with open('already3.txt', 'a') as file:
-            file.write(f"{post_url}\n")
+            elif (is_video(media_url) and detect_in_video(media_url, item, post_url)):
+                break
+        with open('already.txt', 'a', encoding='utf-8') as file:
+          file.write(f"{post_url}\n")
+    global processed_elements
+    processed_elements += 1
+    print_progress()
+
+
+
+
 
 def process_page_range(api_url, query, start, end, step=50):
     with concurrent.futures.ThreadPoolExecutor() as executor:
@@ -198,10 +236,11 @@ def start_parallel_page_processing(api_url, query, total_pages, threads=8, start
         concurrent.futures.wait(futures)
 
 
-def get_total_objects(api_url, query):
+
+def get_total_pages(api_url, query):
     step = 50
     offset = 0
-    total_objects = 0
+    total_pages = 0
 
     while True:
         request_url = f'{api_url}?q={query}&o={offset}'
@@ -213,25 +252,30 @@ def get_total_objects(api_url, query):
             break
 
         data = response.json()
-
+        global total_elements
+        total_elements += len(data)
         if len(data) == 0:
             break
 
-        total_objects += 1
+        total_pages += 1
         offset += step
 
-    return total_objects
+    return total_pages
 
 # Пример вызова
 api_url = "https://coomer.su/api/v1/posts"
-queries = ["luau"]
+# queries = ["island+girl+-tarina_pretty+-kiracherrys+-Anna+-tanned","island+girls+-tarina_pretty+-kiracherrys+-Anna+-tanned"]
+queries = ["🌴+-fjlsjfg"]
+
+# "🌺+-fjlsjfg"
+# "🌴+-fjlsjfg"
 
 # start_parallel_page_processing(api_url, '🥥 + -jfsldfj', 1100, threads=16, start_page=0)
 
 
 for query in queries:
-  total_pages = get_total_objects(api_url, query)  # Общее количество страниц для обработки
-  # total_pages = 100
+  total_pages = get_total_pages(api_url, query)  # Общее количество страниц для обработки
+  # total_pages = 1000
   print(total_pages)
   threads = 1
   if total_pages >= 16:
