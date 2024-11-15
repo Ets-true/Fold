@@ -5,7 +5,7 @@ import io
 from yolov5 import YOLOv5
 
 
-model = YOLOv5('best2.pt')
+model = YOLOv5('best3.pt')
 
 async def start(update: Update, context: CallbackContext) -> None:
     await update.message.reply_text('Привет! Отправь мне фото, и я выполню детекцию объектов с помощью твоей модели.')
