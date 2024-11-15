@@ -1,18 +1,11 @@
 from telegram import Update
 from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, CallbackContext, filters
 from PIL import Image, ImageDraw
-import torch
 import io
-import pathlib
 from yolov5 import YOLOv5
 
-# Исправление для Windows
-posix_backup = pathlib.PosixPath
-try:
-    pathlib.PosixPath = pathlib.WindowsPath
-    model = YOLOv5('best3.pt')
-finally:
-    pathlib.PosixPath = posix_backup
+
+model = YOLOv5('best2.pt')
 
 async def start(update: Update, context: CallbackContext) -> None:
     await update.message.reply_text('Привет! Отправь мне фото, и я выполню детекцию объектов с помощью твоей модели.')
