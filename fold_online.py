@@ -73,6 +73,21 @@ def extract_media_urls(item):
             media_urls.append(f"https://coomer.su/{attachment['path'].lstrip('/')}")
     return media_urls
 
+def not_check_already(target_line):
+    with open('already.txt', 'r', encoding='utf-8') as file:
+        for line in file:
+            if line.strip() == target_line.strip():
+                return False
+    return True
+
+def not_minus_words(title):
+    title_lower = title.lower()
+    minus_words = ["juicy", "@sweetcheeksjuliefree"]
+    for word in minus_words:
+        if word.lower() in title_lower:
+            return False
+    return True
+
 
 def safe_request(url, headers=None, max_retries=5):
     retry_delay = 1
@@ -218,13 +233,25 @@ async def print_progress():
 
 
 async def process_item(item, base_url):
+    print(psutil.virtual_memory().percent)
+    while psutil.virtual_memory().percent > 70:
+        print("Высокая загрузка памяти. Ожидание...")
+        time.sleep(10)
     post_url = f"{base_url}{item['service']}/user/{item['user']}/post/{item['id']}"
-    media_urls = extract_media_urls(item)
-    for media_url in media_urls:
-        if is_image(media_url) and await detect_objects(media_url, item, post_url):
-            break
-        elif is_video(media_url) and await detect_in_video(media_url, item, post_url):
-            break
+    if not_check_already(post_url) and not_minus_words(item['title']):
+
+        media_urls = extract_media_urls(item)
+
+        for index, media_url in enumerate(media_urls):
+            if index > 5:
+                break
+            if (is_image(media_url) and detect_objects(media_url, item, post_url)):
+                break
+            # elif (is_video(media_url) and detect_in_video(media_url, item, post_url)):
+            #     break
+        with open('already.txt', 'a', encoding='utf-8') as file:
+          file.write(f"{post_url}\n")
+
     global processed_elements
     processed_elements += 1
     await print_progress()
@@ -237,24 +264,35 @@ def collect_posts(api_url, query):
         offset = 0
         while True:
             request_url = f'{api_url}?q={q}&o={offset}'
+            print(request_url)
             response = requests.get(request_url)
             if response.status_code != 200 or not response.json():
+                print(request_url)
                 break
             for item in response.json():
                 task_queue.put(item)
                 global total_elements
                 total_elements += 1
             offset += step
+    print(f"Total posts collected: {task_queue.qsize()}")
     return task_queue
 
 async def worker(task_queue):
     while not task_queue.empty():
-        item = task_queue.get()
-        await process_item(item, base_url)
-        task_queue.task_done()
+        try: 
+            item = task_queue.get()
+            await process_item(item, base_url)
+            task_queue.task_done()
+        except Exception as e:
+            print(f"Error in worker: {e} with {item['img_url']}")
+            task_queue.task_done()
 
 async def start_processing(api_url, query, threads=4):
     task_queue = collect_posts(api_url, query)
+    if task_queue.empty():
+        print("No posts to process.")
+        return
+    print(f"Collected {task_queue.qsize()} posts for processing.")
     tasks = [asyncio.create_task(worker(task_queue)) for _ in range(threads)]
     await asyncio.gather(*tasks)
     await log_to_telegram("Processing complete.")
@@ -266,7 +304,7 @@ async def monitor_chat(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if query:
             chat_id = update.message.chat_id
             await context.bot.send_message(chat_id=chat_id, text=f"Начат анализ {query}")
-            await start_processing(api_url, [query], threads=4)
+            await start_processing(api_url, [query], threads=1)
             await context.bot.send_message(chat_id=chat_id, text="Анализ завершен.")
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):

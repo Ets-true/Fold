@@ -279,29 +279,23 @@ async def process_item(item, base_url, thread):
 def collect_posts(api_url, query):
     task_queue = Queue()
     step = 50
-
     for q in query:
       offset = 0
-
       while True:
           request_url = f'{api_url}?q={q}&o={offset}'
           print(request_url)
           response = requests.get(request_url)
           if response.status_code != 200:
-              print(f"Failed to fetch data at offset {offset}: {response.status_code}")
+              print(request_url)
               break
-
           data = response.json()
           if not data:
               break
-          # data = [{'id': '187065312', 'user': 'aalannajade', 'service': 'onlyfans', 'title': 'We went to a luau last night 😁😈🌺', 'substring': 'We went to a luau last night 😁😈🌺', 'published': '2021-08-21T20:16:48', 'file': {'name': '75bc39c7-b3cc-437a-a586-6f7c04419b55.m4v', 'path': '/4b/84/4b84bebf60dca5d82ce04c4a05c34d51a7e4df5aa9c1b32a94d0dfa859ac1a3e.m4v'}, 'attachments': []}]
-
           for item in data:
               task_queue.put(item)
               global total_elements
               total_elements += 1
           offset += step
-
     print(f"Total posts collected: {task_queue.qsize()}")
     return task_queue
 
