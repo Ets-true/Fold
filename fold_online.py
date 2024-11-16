@@ -304,7 +304,7 @@ async def monitor_chat(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if query:
             chat_id = update.message.chat_id
             await context.bot.send_message(chat_id=chat_id, text=f"Начат анализ {query}")
-            await start_processing(api_url, [query], threads=1)
+            await start_processing(api_url, [query], threads=50)
             await context.bot.send_message(chat_id=chat_id, text="Анализ завершен.")
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
