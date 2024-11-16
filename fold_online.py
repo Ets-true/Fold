@@ -278,26 +278,45 @@ def collect_posts(api_url, query):
     return task_queue
 
 async def worker(task_queue, worker_id):
-    print(worker_id)
-    while not task_queue.empty():
-        try: 
-            item = task_queue.get()
+    print(f"Worker {worker_id} started.")
+    while True:
+        try:
+            item = await task_queue.get()  # Асинхронное получение задачи
+            if item is None:  # Если очередь завершена, выходим из воркера
+                print(f"Worker {worker_id} exiting.")
+                task_queue.task_done()
+                break
+            print(f"Worker {worker_id}: Processing item {item}")
             await process_item(item, base_url)
-            task_queue.task_done()
+            task_queue.task_done()  # Сообщаем, что задача выполнена
         except Exception as e:
-            print(f"Error in worker: {e} with {item['img_url']}")
+            print(f"Worker {worker_id}: Error with {item.get('img_url', 'unknown')} - {e}")
             task_queue.task_done()
 
-async def start_processing(api_url, query, threads=4):
-    task_queue = collect_posts(api_url, query)
-    if task_queue.empty():
+async def start_processing(api_url, query, threads=50):
+    task_queue = asyncio.Queue()
+    items = collect_posts(api_url, query)
+
+    if not items:
         print("No posts to process.")
         return
-    print(f"Collected {task_queue.qsize()} posts for processing.")
+
+    print(f"Collected {len(items)} posts for processing.")
+
+    # Помещаем элементы в очередь
+    for item in items:
+        await task_queue.put(item)
+
+    # Создаем воркеры
     tasks = [asyncio.create_task(worker(task_queue, worker_id)) for worker_id in range(threads)]
+
+    # Заполняем очередь None для завершения воркеров
+    for _ in range(threads):
+        await task_queue.put(None)
+
     await asyncio.gather(*tasks)
     await log_to_telegram("Processing complete.")
-
+    
 async def monitor_chat(update: Update, context: ContextTypes.DEFAULT_TYPE):
     message_text = update.message.text
     if message_text.startswith("/coomer "):
