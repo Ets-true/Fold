@@ -280,43 +280,44 @@ def collect_posts(api_url, query):
 async def worker(task_queue, worker_id):
     print(f"Worker {worker_id} started.")
     while True:
+        item = await task_queue.get()  # Получение задачи из очереди
+        if item is None:  # Признак завершения работы
+            break
         try:
-            item = await task_queue.get()  # Асинхронное получение задачи
-            if item is None:  # Если очередь завершена, выходим из воркера
-                print(f"Worker {worker_id} exiting.")
-                task_queue.task_done()
-                break
-            print(f"Worker {worker_id}: Processing item {item}")
             await process_item(item, base_url)
-            task_queue.task_done()  # Сообщаем, что задача выполнена
         except Exception as e:
-            print(f"Worker {worker_id}: Error with {item.get('img_url', 'unknown')} - {e}")
-            task_queue.task_done()
+            print(f"Error in worker {worker_id}: {e} with {item['img_url']}")
+        finally:
+            task_queue.task_done()  # Сообщаем, что задача выполнена
+    print(f"Worker {worker_id} finished.")
 
 async def start_processing(api_url, query, threads=50):
     task_queue = asyncio.Queue()
-    items = collect_posts(api_url, query)
-
-    if not items:
+    posts = collect_posts(api_url, query)  # Собираем задачи
+    
+    if not posts:
         print("No posts to process.")
         return
 
-    # Помещаем элементы в очередь
-    for item in items:
-        await task_queue.put(item)
-
-    print(f"Collected {task_queue.qsize()} posts for processing.")  # Используем qsize() вместо len()
-
-    # Создаем воркеры
-    tasks = [asyncio.create_task(worker(task_queue, worker_id)) for worker_id in range(threads)]
-
-    # Помещаем None, чтобы сигнализировать воркерам о завершении
-    for _ in range(threads):
-        await task_queue.put(None)
-
-    await asyncio.gather(*tasks)
-    await log_to_telegram("Processing complete.") 
+    print(f"Collected {len(posts)} posts for processing.")
     
+    # Загружаем задачи в очередь
+    for post in posts:
+        await task_queue.put(post)
+
+    # Запускаем воркеров
+    tasks = [asyncio.create_task(worker(task_queue, worker_id)) for worker_id in range(threads)]
+    
+    # Дожидаемся выполнения всех задач
+    await task_queue.join()
+
+    # Останавливаем воркеров
+    for _ in range(threads):
+        await task_queue.put(None)  # Посылаем сигнал завершения воркерам
+    
+    await asyncio.gather(*tasks)
+    await log_to_telegram("Processing complete.")
+
 async def monitor_chat(update: Update, context: ContextTypes.DEFAULT_TYPE):
     message_text = update.message.text
     if message_text.startswith("/coomer "):
