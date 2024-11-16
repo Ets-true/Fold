@@ -230,6 +230,9 @@ def send_telegram_photo(img_path, caption, max_retries=5, delay_between_retries=
     bot_token = '6810766307:AAGtQBxU156nBr3f6CEA6l8N6S8KPO4sW80'
     chat_id = '-4236684694'
     bot = Bot(token=bot_token)
+    if img_path == '':
+        bot.send_message(chat_id= chat_id, text=caption)
+        return True
 
     for attempt in range(max_retries):
         try:
@@ -327,10 +330,13 @@ def start_processing(api_url, query, threads=16):
 # Пример вызова
 api_url = "https://coomer.su/api/v1/posts"
 # queries = ["🌴+-fjlsjfg"]
+# queries = ["🌺+-fjlsjfg"]
 # queries = ["hawaii", "hawaiian", "aloha", "hula", "tiki"]
-queries = ["🌺+-fjlsjfg",]
-
+queries = ["luau",]
+send_telegram_photo('', 'Начата обработка')
 start_processing(api_url, queries, threads=1)
+send_telegram_photo('', 'Закончена обработка')
+
 
 
 
