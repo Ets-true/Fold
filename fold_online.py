@@ -301,21 +301,21 @@ async def start_processing(api_url, query, threads=50):
         print("No posts to process.")
         return
 
-    print(f"Collected {len(items)} posts for processing.")
-
     # Помещаем элементы в очередь
     for item in items:
         await task_queue.put(item)
 
+    print(f"Collected {task_queue.qsize()} posts for processing.")  # Используем qsize() вместо len()
+
     # Создаем воркеры
     tasks = [asyncio.create_task(worker(task_queue, worker_id)) for worker_id in range(threads)]
 
-    # Заполняем очередь None для завершения воркеров
+    # Помещаем None, чтобы сигнализировать воркерам о завершении
     for _ in range(threads):
         await task_queue.put(None)
 
     await asyncio.gather(*tasks)
-    await log_to_telegram("Processing complete.")
+    await log_to_telegram("Processing complete.") 
     
 async def monitor_chat(update: Update, context: ContextTypes.DEFAULT_TYPE):
     message_text = update.message.text
