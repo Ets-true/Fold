@@ -292,29 +292,29 @@ async def worker(task_queue, worker_id):
     print(f"Worker {worker_id} finished.")
 
 async def start_processing(api_url, query, threads=50):
-    task_queue = asyncio.Queue()
+    task_queue = asyncio.Queue()  # Используем asyncio.Queue
     posts = collect_posts(api_url, query)  # Собираем задачи
-    
-    if not posts:
+
+    if task_queue.empty():
         print("No posts to process.")
         return
 
-    print(f"Collected {len(posts)} posts for processing.")
-    
+    print(f"Collected {task_queue.qsize()} posts for processing.")
+
     # Загружаем задачи в очередь
-    for post in posts:
-        await task_queue.put(post)
+    while not posts.empty():
+        task_queue.put_nowait(posts.get())
 
     # Запускаем воркеров
     tasks = [asyncio.create_task(worker(task_queue, worker_id)) for worker_id in range(threads)]
-    
-    # Дожидаемся выполнения всех задач
+
+    # Дожидаемся завершения очереди
     await task_queue.join()
 
-    # Останавливаем воркеров
+    # Завершение воркеров
     for _ in range(threads):
-        await task_queue.put(None)  # Посылаем сигнал завершения воркерам
-    
+        await task_queue.put(None)  # Сигнал завершения
+
     await asyncio.gather(*tasks)
     await log_to_telegram("Processing complete.")
 
