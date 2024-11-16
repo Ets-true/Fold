@@ -18,6 +18,37 @@ import os
 import threading
 
 
+def log_to_telegram(message):
+    bot_token = '6810766307:AAGtQBxU156nBr3f6CEA6l8N6S8KPO4sW80'
+    chat_id = '-4236684694'
+    bot = Bot(token=bot_token)
+    try:
+        bot.send_message(chat_id=chat_id, text=message)
+    except Exception as e:
+        print(f"Failed to send log to Telegram: {e}")
+
+def send_telegram_photo(img_path, caption, max_retries=5, delay_between_retries=5):
+    print('START SENDING')
+    bot_token = '6810766307:AAGtQBxU156nBr3f6CEA6l8N6S8KPO4sW80'
+    chat_id = '-4236684694'
+    bot = Bot(token=bot_token)
+  
+    for attempt in range(max_retries):
+        try:
+            with open(img_path, 'rb') as photo:
+                bot.send_photo(chat_id=chat_id, photo=photo, caption=caption)
+            print('END SENDING')
+            return True  # Если отправка успешна, выходим из функции
+        except Exception as e:
+            print(f"Попытка {attempt + 1} не удалась. Ошибка: {e}")
+            if attempt < max_retries - 1:
+                print(f"Повторная попытка через {delay_between_retries} секунд...")
+                time.sleep(delay_between_retries)  # Ожидание перед повтором
+            else:
+                print('TG NOT SENDED после нескольких попыток')
+                return False
+
+
 
 # Создание директории для временных файлов, если она не существует
 if not os.path.exists('temp_files'):
@@ -53,15 +84,6 @@ def safe_request(url, headers=None, max_retries=5):
     return None
 
 # Функция отправки логов в Telegram
-def log_to_telegram(message):
-    bot_token = '6810766307:AAGtQBxU156nBr3f6CEA6l8N6S8KPO4sW80'
-    chat_id = '-4236684694'
-    bot = Bot(token=bot_token)
-    try:
-        bot.send_message(chat_id=chat_id, text=message)
-    except Exception as e:
-        print(f"Failed to send log to Telegram: {e}")
-
 
 def detect_objects(image_url, item, post_url):
     print(image_url)
@@ -228,26 +250,6 @@ def detect_in_video(video_url, item, post_url, max_retries=5, time_interval=10, 
 
     return False
 
-def send_telegram_photo(img_path, caption, max_retries=5, delay_between_retries=5):
-    print('START SENDING')
-    bot_token = '6810766307:AAGtQBxU156nBr3f6CEA6l8N6S8KPO4sW80'
-    chat_id = '-4236684694'
-    bot = Bot(token=bot_token)
-  
-    for attempt in range(max_retries):
-        try:
-            with open(img_path, 'rb') as photo:
-                bot.send_photo(chat_id=chat_id, photo=photo, caption=caption)
-            print('END SENDING')
-            return True  # Если отправка успешна, выходим из функции
-        except Exception as e:
-            print(f"Попытка {attempt + 1} не удалась. Ошибка: {e}")
-            if attempt < max_retries - 1:
-                print(f"Повторная попытка через {delay_between_retries} секунд...")
-                time.sleep(delay_between_retries)  # Ожидание перед повтором
-            else:
-                print('TG NOT SENDED после нескольких попыток')
-                return False
 
 def process_item(item, base_url, thread):
     print(psutil.virtual_memory().percent)
@@ -264,8 +266,8 @@ def process_item(item, base_url, thread):
                 break
             if (is_image(media_url) and detect_objects(media_url, item, post_url)):
                 break
-            elif (is_video(media_url) and detect_in_video(media_url, item, post_url)):
-                break
+            # elif (is_video(media_url) and detect_in_video(media_url, item, post_url)):
+            #     break
         with open('already.txt', 'a', encoding='utf-8') as file:
           file.write(f"{post_url}\n")
 
