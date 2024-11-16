@@ -21,7 +21,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 def main():
     # Укажите ваш токен Telegram Bot API
-    TOKEN = "ВАШ_ТОКЕН"
+    TOKEN = "6810766307:AAGtQBxU156nBr3f6CEA6l8N6S8KPO4sW80"
     
     # Создаем объект приложения
     app = ApplicationBuilder().token(TOKEN).build()
