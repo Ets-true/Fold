@@ -1,38 +1,40 @@
 from telegram import Update
-from telegram.ext import Updater, CommandHandler, MessageHandler, Filters, CallbackContext
+from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, filters, ContextTypes
 
-def func(query):
+async def func(query):
     # Здесь выполняется анализ или другая логика.
     print(f"Выполняется анализ для: {query}")
 
-def monitor_chat(update: Update, context: CallbackContext):
+async def monitor_chat(update: Update, context: ContextTypes.DEFAULT_TYPE):
     message_text = update.message.text
     if message_text.startswith("/coomer "):
         query = message_text[len("/coomer "):].strip()
         if query:
             chat_id = update.message.chat_id
-            context.bot.send_message(chat_id=chat_id, text=f"Начат анализ {query}")
-            func(query)
+            await context.bot.send_message(chat_id=chat_id, text=f"Начат анализ {query}")
+            await func(query)
         else:
-            update.message.reply_text("Пожалуйста, укажите запрос после команды /coomer.")
+            await update.message.reply_text("Пожалуйста, укажите запрос после команды /coomer.")
+
+async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await update.message.reply_text("Бот активен. Используйте /coomer <запрос> для анализа.")
 
 def main():
     # Укажите ваш токен Telegram Bot API
-    TOKEN = "6810766307:AAGtQBxU156nBr3f6CEA6l8N6S8KPO4sW80"
+    TOKEN = "ВАШ_ТОКЕН"
     
-    # Создаем объект Updater и передаем ему токен вашего бота
-    updater = Updater(TOKEN)
+    # Создаем объект приложения
+    app = ApplicationBuilder().token(TOKEN).build()
 
-    # Получаем диспетчер для регистрации обработчиков
-    dispatcher = updater.dispatcher
+    # Регистрируем обработчик команды /start
+    app.add_handler(CommandHandler("start", start))
 
-    # Регистрируем обработчик для всех сообщений
-    dispatcher.add_handler(MessageHandler(Filters.text & ~Filters.command, monitor_chat))
+    # Регистрируем обработчик сообщений с командой /coomer
+    app.add_handler(MessageHandler(filters.TEXT & filters.Regex(r'^/coomer '), monitor_chat))
 
     # Запускаем бота
-    updater.start_polling()
     print("Бот запущен. Нажмите Ctrl+C для завершения.")
-    updater.idle()
+    app.run_polling()
 
 if __name__ == "__main__":
     main()
