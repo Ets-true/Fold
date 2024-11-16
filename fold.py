@@ -18,7 +18,7 @@ import os
 import threading
 
 
-def log_to_telegram(message):
+async def log_to_telegram(message):
     bot_token = '6810766307:AAGtQBxU156nBr3f6CEA6l8N6S8KPO4sW80'
     chat_id = '-4236684694'
     bot = Bot(token=bot_token)
@@ -27,7 +27,7 @@ def log_to_telegram(message):
     except Exception as e:
         print(f"Failed to send log to Telegram: {e}")
 
-def send_telegram_photo(img_path, caption, max_retries=5, delay_between_retries=5):
+async def send_telegram_photo(img_path, caption, max_retries=5, delay_between_retries=5):
     print('START SENDING')
     bot_token = '6810766307:AAGtQBxU156nBr3f6CEA6l8N6S8KPO4sW80'
     chat_id = '-4236684694'
