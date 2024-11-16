@@ -257,8 +257,7 @@ async def process_item(item, base_url):
     await print_progress()
 
 
-def collect_posts(api_url, query):
-    task_queue = Queue()
+async def collect_posts(api_url, query, task_queue):
     step = 50
     for q in query:
         offset = 0
@@ -267,15 +266,14 @@ def collect_posts(api_url, query):
             print(request_url)
             response = requests.get(request_url)
             if response.status_code != 200 or not response.json():
-                print(request_url)
+                print(f"No more posts found for query: {q}")
                 break
             for item in response.json():
-                task_queue.put(item)
+                await task_queue.put(item)  # Используем asyncio.Queue для загрузки задач
                 global total_elements
                 total_elements += 1
             offset += step
     print(f"Total posts collected: {task_queue.qsize()}")
-    return task_queue
 
 async def worker(task_queue, worker_id):
     print(f"Worker {worker_id} started.")
@@ -286,14 +284,14 @@ async def worker(task_queue, worker_id):
         try:
             await process_item(item, base_url)
         except Exception as e:
-            print(f"Error in worker {worker_id}: {e} with {item['img_url']}")
+            print(f"Error in worker {worker_id}: {e} with {item.get('img_url')}")
         finally:
             task_queue.task_done()  # Сообщаем, что задача выполнена
     print(f"Worker {worker_id} finished.")
 
 async def start_processing(api_url, query, threads=50):
-    task_queue = asyncio.Queue()  # Используем asyncio.Queue
-    posts = collect_posts(api_url, query)  # Собираем задачи
+    task_queue = asyncio.Queue()  # Используем asyncio.Queue для совместимости
+    await collect_posts(api_url, query, task_queue)  # Собираем задачи в асинхронную очередь
 
     if task_queue.empty():
         print("No posts to process.")
@@ -301,14 +299,10 @@ async def start_processing(api_url, query, threads=50):
 
     print(f"Collected {task_queue.qsize()} posts for processing.")
 
-    # Загружаем задачи в очередь
-    while not posts.empty():
-        task_queue.put_nowait(posts.get())
-
     # Запускаем воркеров
     tasks = [asyncio.create_task(worker(task_queue, worker_id)) for worker_id in range(threads)]
 
-    # Дожидаемся завершения очереди
+    # Дожидаемся завершения всех задач
     await task_queue.join()
 
     # Завершение воркеров
