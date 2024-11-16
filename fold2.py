@@ -261,8 +261,8 @@ def process_item(item, base_url, thread):
                 break
             if (is_image(media_url) and detect_objects(media_url, item, post_url)):
                 break
-            # elif (is_video(media_url) and detect_in_video(media_url, item, post_url)):
-            #     break
+            elif (is_video(media_url) and detect_in_video(media_url, item, post_url)):
+                break
         with open('already.txt', 'a', encoding='utf-8') as file:
           file.write(f"{post_url}\n")
 
@@ -328,7 +328,7 @@ def start_processing(api_url, query, threads=16):
 api_url = "https://coomer.su/api/v1/posts"
 # queries = ["🌴+-fjlsjfg"]
 # queries = ["hawaii", "hawaiian", "aloha", "hula", "tiki"]
-queries = ["luau",]
+queries = ["🌺+-fjlsjfg",]
 
 start_processing(api_url, queries, threads=1)
 
