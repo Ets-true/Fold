@@ -277,7 +277,8 @@ def collect_posts(api_url, query):
     print(f"Total posts collected: {task_queue.qsize()}")
     return task_queue
 
-async def worker(task_queue):
+async def worker(task_queue, worker_id):
+    print(worker_id)
     while not task_queue.empty():
         try: 
             item = task_queue.get()
@@ -293,7 +294,7 @@ async def start_processing(api_url, query, threads=4):
         print("No posts to process.")
         return
     print(f"Collected {task_queue.qsize()} posts for processing.")
-    tasks = [asyncio.create_task(worker(task_queue)) for _ in range(threads)]
+    tasks = [asyncio.create_task(worker(task_queue, worker_id)) for worker_id in range(threads)]
     await asyncio.gather(*tasks)
     await log_to_telegram("Processing complete.")
 
