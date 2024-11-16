@@ -229,7 +229,7 @@ async def print_progress():
     else:
         message = "No total elements to process."
     print(message)
-    await log_to_telegram(message)
+    # await log_to_telegram(message)
 
 
 async def process_item(item, base_url):
@@ -239,14 +239,14 @@ async def process_item(item, base_url):
         time.sleep(10)
     post_url = f"{base_url}{item['service']}/user/{item['user']}/post/{item['id']}"
     if not_check_already(post_url) and not_minus_words(item['title']):
-
         media_urls = extract_media_urls(item)
 
         for index, media_url in enumerate(media_urls):
             if index > 5:
                 break
-            if (is_image(media_url) and detect_objects(media_url, item, post_url)):
-                break
+            if is_image(media_url):
+                if await detect_objects(media_url, item, post_url):
+                    break
             # elif (is_video(media_url) and detect_in_video(media_url, item, post_url)):
             #     break
         with open('already.txt', 'a', encoding='utf-8') as file:
