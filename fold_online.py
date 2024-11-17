@@ -12,6 +12,7 @@ import numpy as np
 import os
 import threading
 import time
+import aiohttp
 
 # Подготовка окружения
 if not os.path.exists('temp_files'):
@@ -89,15 +90,19 @@ def not_minus_words(title):
     return True
 
 
-def safe_request(url, headers=None, max_retries=5):
+async def safe_request(url, headers=None, max_retries=5):
     retry_delay = 1
-    for attempt in range(max_retries):
-        response = requests.get(url, headers=headers, timeout=40)
-        if response.status_code == 429:
-            time.sleep(retry_delay)
-            retry_delay *= 2
-        else:
-            return response
+    async with aiohttp.ClientSession() as session:
+        for attempt in range(max_retries):
+            try:
+                async with session.get(url, headers=headers, timeout=40) as response:
+                    if response.status == 429:
+                        await asyncio.sleep(retry_delay)
+                        retry_delay *= 2
+                    else:
+                        return await response.read()
+            except aiohttp.ClientError as e:
+                print(f"Request failed: {e}")
     return None
 
 async def detect_objects(image_url, item, post_url):
