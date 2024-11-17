@@ -115,10 +115,9 @@ async def detect_objects(image_url, item, post_url):
 
                 frame_rgb = np.array(image)
                 # frame_rgb = cv2.cvtColor(frame_rgb, cv2.COLOR_BGR2RGB)
-                with model_lock:  # Использование блокировки при доступе к модели
-                    results = model.predict(frame_rgb)
-
-
+                # with model_lock: 
+                #     results = model.predict(frame_rgb)
+                results = model.predict(frame_rgb)
 
                 for *box, conf, cls in results.xyxy[0]:
                     if conf > 0.74:
