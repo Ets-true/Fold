@@ -33,7 +33,7 @@ model_lock = threading.Lock()
 
 
 api_url = "https://coomer.su/api/v1/posts"
-bot_token = '6810766307:AAGtQBxU156nBr3f6CEA6l8N6S8KPO4sW80'
+bot_token = '6810766307:AAFJlsb9OszH-ajYueLvopprylm4AIj55zw'
 chat_id = '-4236684694'
 
 
