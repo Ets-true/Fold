@@ -55,6 +55,8 @@ async def send_telegram_photo(img_path, caption, max_retries=5, delay_between_re
             return True
         except Exception as e:
             print(f"Attempt {attempt + 1} failed: {e}")
+            if "Flood control exceeded" in str(e):
+                await asyncio.sleep(15)  # Увеличьте паузу при превышении лимита
             if attempt < max_retries - 1:
                 await asyncio.sleep(delay_between_retries)
     return False
@@ -240,7 +242,8 @@ async def process_item(item, base_url):
     # print(psutil.virtual_memory().percent)
     while psutil.virtual_memory().percent > 70:
         # print("Высокая загрузка памяти. Ожидание...")
-        time.sleep(10)
+        # time.sleep(10)
+        await asyncio.sleep(10)
     post_url = f"{base_url}{item['service']}/user/{item['user']}/post/{item['id']}"
     if not_check_already(post_url) and not_minus_words(item['title']):
         media_urls = extract_media_urls(item)
