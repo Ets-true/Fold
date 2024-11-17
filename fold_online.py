@@ -101,7 +101,7 @@ def safe_request(url, headers=None, max_retries=5):
     return None
 
 async def detect_objects(image_url, item, post_url):
-    print(image_url)
+    # print(image_url)
     try:
         response = safe_request(image_url)
         if response and response.status_code == 200:
@@ -143,7 +143,7 @@ async def detect_objects(image_url, item, post_url):
     return False
 
 async def detect_in_video(video_url, item, post_url, max_retries=5, time_interval=10, retry_delay=2):
-    print(video_url)
+    # print(video_url)
     try:
         retries = 0
 
@@ -152,38 +152,38 @@ async def detect_in_video(video_url, item, post_url, max_retries=5, time_interva
             cap = cv2.VideoCapture(video_url)
 
             if cap.isOpened():
-                print(f"Видео успешно открыто на попытке {retries + 1}")
+                # print(f"Видео успешно открыто на попытке {retries + 1}")
                 break
             else:
-                print(f"Не удалось открыть видео на попытке {retries + 1}. Попробую снова через {retry_delay} секунд.")
+                # print(f"Не удалось открыть видео на попытке {retries + 1}. Попробую снова через {retry_delay} секунд.")
                 retries += 1
                 time.sleep(retry_delay)
 
         if retries == max_retries:
-            print(f"Не удалось открыть видео: {video_url} после {max_retries} попыток.")
+            # print(f"Не удалось открыть видео: {video_url} после {max_retries} попыток.")
             return False
 
         # Получаем FPS (кадры в секунду) и общее количество кадров
         fps = cap.get(cv2.CAP_PROP_FPS)
         if fps <= 0:
-            print(f"Не удалось получить FPS для видео: {video_url}")
+            # print(f"Не удалось получить FPS для видео: {video_url}")
             return False
 
         # Рассчитываем интервал между кадрами в зависимости от времени (в секундах)
         frame_interval = int(fps * time_interval)  # Количество кадров для интервала времени (например, 10 секунд)
-        print(f"FPS: {fps}, обрабатывается каждый {frame_interval}-й кадр (примерно каждые {time_interval} секунд)")
+        # print(f"FPS: {fps}, обрабатывается каждый {frame_interval}-й кадр (примерно каждые {time_interval} секунд)")
 
         frame_count = 0
 
         while cap.isOpened():
             ret, frame = cap.read()
             if not ret:
-                print("Видео окончено или не удалось считать кадр")
+                # print("Видео окончено или не удалось считать кадр")
                 break
 
             # Обрабатываем кадр, если его номер соответствует интервалу
             if frame_count % frame_interval == 0:
-                print(f"Обрабатывается кадр: {frame_count}")
+                # print(f"Обрабатывается кадр: {frame_count}")
                 frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
 
                 with model_lock:  # Использование блокировки при доступе к модели
@@ -193,7 +193,7 @@ async def detect_in_video(video_url, item, post_url, max_retries=5, time_interva
                     class_name = class_names[int(cls)]
                     if class_name == 'hula skirt' and conf > 0.74:
                         results.render()
-                        print(f"Найден элемент: {class_name} - {conf}")
+                        # print(f"Найден элемент: {class_name} - {conf}")
 
                         # Конвертация обратно в BGR для сохранения
                         frame_bgr = cv2.cvtColor(frame_rgb, cv2.COLOR_RGB2BGR)
@@ -215,7 +215,7 @@ async def detect_in_video(video_url, item, post_url, max_retries=5, time_interva
             frame_count += 1
 
         cap.release()
-        print("Обработка видео завершена")
+        # print("Обработка видео завершена")
 
     except Exception as e:
         print(f"Ошибка при обработке видео: {str(e)}")
@@ -228,14 +228,14 @@ async def print_progress():
         message = f"Progress: {processed_elements}/{total_elements} ({progress:.2f}%)"
     else:
         message = "No total elements to process."
-    print(message)
+    # print(message)
     # await log_to_telegram(message)
 
 
 async def process_item(item, base_url):
-    print(psutil.virtual_memory().percent)
+    # print(psutil.virtual_memory().percent)
     while psutil.virtual_memory().percent > 70:
-        print("Высокая загрузка памяти. Ожидание...")
+        # print("Высокая загрузка памяти. Ожидание...")
         time.sleep(10)
     post_url = f"{base_url}{item['service']}/user/{item['user']}/post/{item['id']}"
     if not_check_already(post_url) and not_minus_words(item['title']):
@@ -294,7 +294,7 @@ async def start_processing(api_url, query, threads=50):
     await collect_posts(api_url, query, task_queue)  # Собираем задачи в асинхронную очередь
 
     if task_queue.empty():
-        print("No posts to process.")
+        # print("No posts to process.")
         return
 
     print(f"Collected {task_queue.qsize()} posts for processing.")
