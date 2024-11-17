@@ -110,7 +110,7 @@ async def detect_objects(image_url, item, post_url):
     try:
         response = await safe_request(image_url)
         if response:
-            with Image.open(BytesIO(response.content)).convert("RGB") as image:
+            with Image.open(BytesIO(response)).convert("RGB") as image:
                  # Изменение размера изображения пропорционально
                 if image.size[1] > 800:
                     target_height = 800
