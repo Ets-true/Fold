@@ -326,7 +326,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text("Бот активен. Используйте /coomer <запрос> для анализа.")
 
 def main():
-    TOKEN = "6810766307:AAGtQBxU156nBr3f6CEA6l8N6S8KPO4sW80"
+    TOKEN = "6810766307:AAFJlsb9OszH-ajYueLvopprylm4AIj55zw"
     app = ApplicationBuilder().token(TOKEN).build()
     app.add_handler(CommandHandler("start", start))
     app.add_handler(MessageHandler(filters.TEXT & filters.Regex(r'^/coomer '), monitor_chat))
